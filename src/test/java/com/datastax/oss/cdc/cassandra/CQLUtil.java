@@ -1,5 +1,6 @@
 package com.datastax.oss.cdc.cassandra;
 
+import io.reactivex.Single;
 import org.apache.cassandra.cql3.BatchQueryOptions;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.QueryProcessor;
@@ -7,7 +8,7 @@ import org.apache.cassandra.cql3.statements.BatchStatement;
 import org.apache.cassandra.cql3.statements.ModificationStatement;
 import org.apache.cassandra.cql3.statements.ParsedStatement;
 import org.apache.cassandra.db.Mutation;
-import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.service.QueryState;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -25,7 +26,7 @@ public final class CQLUtil {
      * @param timestamp Query execution timestamp in milliseconds
      * @return Converted Mutations
      */
-    public static Collection<Mutation> toMutation(String cql, ClientState client, long timestamp) {
+    public static Collection<Mutation> toMutation(String cql, QueryState client, long timestamp) {
         long timestampInMicro = TimeUnit.MILLISECONDS.toMicros(timestamp);
         long timestampInNano = TimeUnit.MILLISECONDS.toNanos(timestamp);
 
@@ -43,7 +44,7 @@ public final class CQLUtil {
                 throw new UnsupportedOperationException("CQL not supported: " + cql);
             }
             toMutation.setAccessible(true);
-            return (Collection<Mutation>) toMutation.invoke(stmt.statement, queryOptions, true, timestampInMicro, timestampInNano);
+            return ((Single<Collection<Mutation>>) toMutation.invoke(stmt.statement, queryOptions, true, timestampInMicro, timestampInNano)).blockingGet();
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }

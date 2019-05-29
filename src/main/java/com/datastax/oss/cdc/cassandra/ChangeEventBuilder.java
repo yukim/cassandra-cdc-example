@@ -1,17 +1,17 @@
 package com.datastax.oss.cdc.cassandra;
 
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.ClusteringBound;
 import org.apache.cassandra.db.LivenessInfo;
 import org.apache.cassandra.db.RangeTombstone;
+import org.apache.cassandra.schema.ColumnMetadata;
+import org.apache.cassandra.schema.TableMetadata;
 
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class ChangeEventBuilder {
-    private final CFMetaData metadata;
+    private final TableMetadata metadata;
     private final List<Column> partitionKeys = new ArrayList<>();
     private Stack<RowEvent> rowEvents = new Stack<>();
     private List<ChangeEvent> parsedEvents = new ArrayList<>();
@@ -19,7 +19,7 @@ public class ChangeEventBuilder {
     /**
      * @param metadata
      */
-    public ChangeEventBuilder(CFMetaData metadata) {
+    public ChangeEventBuilder(TableMetadata metadata) {
         this.metadata = metadata;
     }
 
@@ -38,9 +38,9 @@ public class ChangeEventBuilder {
             deletion.addCriteria(Criteria.equals(c.name, c.value));
         }
         ChangeEvent event = new DefaultChangeEvent(
-                metadata.ksName,
-                metadata.cfName,
-                metadata.cfId,
+                metadata.keyspace,
+                metadata.name,
+                metadata.id.asUUID(),
                 Instant.ofEpochMilli(TimeUnit.MICROSECONDS.toMillis(timestamp)),
                 deletion);
         parsedEvents.add(event);
@@ -56,7 +56,7 @@ public class ChangeEventBuilder {
         ClusteringBound start = rt.deletedSlice().start();
         ClusteringBound end = rt.deletedSlice().end();
         for (int i = 0; i < Math.max(start.size(), end.size()); i++) {
-            ColumnDefinition def = metadata.clusteringColumns().get(i);
+            ColumnMetadata def = metadata.clusteringColumns().get(i);
             Object startValue = i < start.size() ? def.type.getSerializer().deserialize(start.get(i)) : null;
             Object endValue = i < end.size() ? def.type.getSerializer().deserialize(end.get(i)) : null;
             if (startValue != null && startValue.equals(endValue)) {
@@ -65,9 +65,9 @@ public class ChangeEventBuilder {
                 deletion.addCriteria(Criteria.range(def.name.toString(), startValue, endValue, start.isInclusive(), end.isInclusive()));
             }
         }
-        parsedEvents.add(new DefaultChangeEvent(metadata.ksName,
-                metadata.cfName,
-                metadata.cfId,
+        parsedEvents.add(new DefaultChangeEvent(metadata.keyspace,
+                metadata.name,
+                metadata.id.asUUID(),
                 timestamp,
                 deletion));
     }
@@ -115,7 +115,7 @@ public class ChangeEventBuilder {
         }
     }
 
-    public List<ChangeEvent> build(CFMetaData metadata) {
+    public List<ChangeEvent> build(TableMetadata metadata) {
         for (RowEvent rowEvent : rowEvents) {
             parsedEvents.addAll(rowEvent.build(metadata, partitionKeys));
         }
@@ -154,19 +154,19 @@ public class ChangeEventBuilder {
             columns.add(name);
         }
 
-        public List<ChangeEvent> build(CFMetaData metadata, List<Column> partitionKeys) {
+        public List<ChangeEvent> build(TableMetadata metadata, List<Column> partitionKeys) {
             List<ChangeEvent> events = new ArrayList<>();
             for (Map.Entry<Instant, Row> e : getUpdatedByTimestamp(partitionKeys).entrySet()) {
-                events.add(new DefaultChangeEvent(metadata.ksName,
-                        metadata.cfName,
-                        metadata.cfId,
+                events.add(new DefaultChangeEvent(metadata.keyspace,
+                        metadata.name,
+                        metadata.id.asUUID(),
                         e.getKey(),
                         e.getValue()));
             }
             for (Map.Entry<Instant, Deletion> e : getDeletionByTimestamp(partitionKeys).entrySet()) {
-                events.add(new DefaultChangeEvent(metadata.ksName,
-                        metadata.cfName,
-                        metadata.cfId,
+                events.add(new DefaultChangeEvent(metadata.keyspace,
+                        metadata.name,
+                        metadata.id.asUUID(),
                         e.getKey(),
                         e.getValue()));
             }
@@ -183,9 +183,9 @@ public class ChangeEventBuilder {
                     }
                     DeletionImpl deletion = new DeletionImpl();
                     deletion.criteria.addAll(criteria);
-                    events.add(new DefaultChangeEvent(metadata.ksName,
-                            metadata.cfName,
-                            metadata.cfId,
+                    events.add(new DefaultChangeEvent(metadata.keyspace,
+                            metadata.name,
+                            metadata.id.asUUID(),
                             ts,
                             deletion));
                 } else {
@@ -196,9 +196,9 @@ public class ChangeEventBuilder {
                     for (Column col : clusteringColumns) {
                         columns.put(col.name, col.value);
                     }
-                    events.add(new DefaultChangeEvent(metadata.ksName,
-                            metadata.cfName,
-                            metadata.cfId,
+                    events.add(new DefaultChangeEvent(metadata.keyspace,
+                            metadata.name,
+                            metadata.id.asUUID(),
                             ts,
                             () -> columns));
                 }

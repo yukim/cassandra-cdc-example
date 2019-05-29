@@ -4,8 +4,8 @@ import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.commitlog.CommitLogDescriptor;
 import org.apache.cassandra.db.commitlog.CommitLogReadHandler;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
-import org.slf4j.Logger;
 
+import java.io.IOError;
 import java.io.IOException;
 import java.util.List;
 
@@ -23,7 +23,7 @@ public class CommitLogHandler implements CommitLogReadHandler {
         return false;
     }
 
-    public void handleUnrecoverableError(CommitLogReadException e) throws IOException {
-        throw e;
+    public void handleUnrecoverableError(CommitLogReadException e) {
+        throw new IOError(e);
     }
 }

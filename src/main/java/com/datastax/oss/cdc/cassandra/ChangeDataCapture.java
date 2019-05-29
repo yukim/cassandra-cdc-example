@@ -1,8 +1,8 @@
 package com.datastax.oss.cdc.cassandra;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.commitlog.CommitLogReader;
+import org.apache.cassandra.schema.Schema;
 
 import java.io.IOException;
 import java.nio.file.*;

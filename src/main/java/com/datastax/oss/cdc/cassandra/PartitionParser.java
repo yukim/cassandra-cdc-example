@@ -1,7 +1,5 @@
 package com.datastax.oss.cdc.cassandra;
 
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.DeletionInfo;
 import org.apache.cassandra.db.RangeTombstone;
@@ -13,6 +11,8 @@ import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.ColumnData;
 import org.apache.cassandra.db.rows.ComplexColumnData;
 import org.apache.cassandra.db.rows.Row;
+import org.apache.cassandra.schema.ColumnMetadata;
+import org.apache.cassandra.schema.TableMetadata;
 
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -82,7 +82,7 @@ public class PartitionParser {
 
                 // clustering columns
                 int i = 0;
-                for (ColumnDefinition def : partition.metadata().clusteringColumns()) {
+                for (ColumnMetadata def : partition.metadata().clusteringColumns()) {
                     changeEventBuilder.addClusteringColumn(
                             def.toString(),
                             def.type.getSerializer().deserialize(row.clustering().get(i)));
@@ -98,7 +98,7 @@ public class PartitionParser {
     }
 
     private void visitCell(Cell cell) {
-        ColumnDefinition col = cell.column();
+        ColumnMetadata col = cell.column();
         if (cell.isTombstone()) {
             changeEventBuilder.addDeletedColumn(col.name.toString(),
                     cell.timestamp());
@@ -150,10 +150,10 @@ public class PartitionParser {
         }
     }
 
-    private static ByteBuffer[] getComponents(CFMetaData metadata, DecoratedKey partitionKey) {
+    private static ByteBuffer[] getComponents(TableMetadata metadata, DecoratedKey partitionKey) {
         ByteBuffer key = partitionKey.getKey();
-        if (metadata.getKeyValidator() instanceof CompositeType) {
-            return ((CompositeType) metadata.getKeyValidator()).split(key);
+        if (metadata.partitionKeyType instanceof CompositeType) {
+            return ((CompositeType) metadata.partitionKeyType).split(key);
         } else {
             return new ByteBuffer[]{ key };
         }

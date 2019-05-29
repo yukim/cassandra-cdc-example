@@ -1,6 +1,5 @@
 package com.datastax.oss.cdc.cassandra;
 
-import javax.validation.constraints.NotNull;
 import java.util.List;
 
 /**
@@ -21,7 +20,6 @@ public interface Deletion {
      *
      * @return list of deleted columns, or empty list when not specified
      */
-    @NotNull
     List<String> getColumns();
 
     /**

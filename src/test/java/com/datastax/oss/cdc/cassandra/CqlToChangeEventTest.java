@@ -1,25 +1,23 @@
 package com.datastax.oss.cdc.cassandra;
 
-import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.cql3.statements.CreateTableStatement;
+import org.apache.cassandra.db.EncodingVersion;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.io.util.DataInputBuffer;
 import org.apache.cassandra.io.util.WrappedDataOutputStreamPlus;
-import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.KeyspaceMetadata;
 import org.apache.cassandra.schema.KeyspaceParams;
+import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.Tables;
-import org.apache.cassandra.service.ClientState;
-import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.service.QueryState;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,7 +25,7 @@ public abstract class CqlToChangeEventTest {
 
     private static final String TEST_DIR = "./test_dir";
 
-    private ClientState client;
+    private QueryState state;
 
     @BeforeAll
     public static void initialize() {
@@ -52,20 +50,20 @@ public abstract class CqlToChangeEventTest {
         String keyspaceName = this.getClass().getSimpleName().replaceAll("(.)(\\p{Upper})", "$1_$2").toLowerCase();
 
         // table is created only once
-        KeyspaceMetadata ksm = Schema.instance.getKSMetaData(keyspaceName);
+        KeyspaceMetadata ksm = Schema.instance.getKeyspaceMetadata(keyspaceName);
         if (ksm == null) {
             Tables.Builder tables = Tables.builder();
             createTableStatement()
                     .stream()
-                    .filter(tableName -> !Schema.instance.hasCF(Pair.create(keyspaceName, tableName)))
-                    .map(t -> CFMetaData.compile(t, keyspaceName))
+                    .map(t -> CreateTableStatement.parse(t, keyspaceName).build())
+                    .filter(table -> Schema.instance.getTableMetadataIfExists(keyspaceName, table.name) == null)
                     .forEach(tables::add);
             Schema.instance.load(KeyspaceMetadata.create(keyspaceName, KeyspaceParams.simple(1), tables.build()));
         }
-        if (client == null) {
-            client = ClientState.forInternalCalls();
+        if (state == null) {
+            state = QueryState.forInternalCalls();
         }
-        client.setKeyspace(keyspaceName);
+        state.getClientState().setKeyspace(keyspaceName);
     }
 
     protected List<ChangeEvent> run(String cql) {
@@ -80,15 +78,16 @@ public abstract class CqlToChangeEventTest {
      */
     protected List<ChangeEvent> run(String cql, long timestamp) {
         System.out.println(cql);
-        return CQLUtil.toMutation(cql, client, timestamp).stream()
+        return CQLUtil.toMutation(cql, state, timestamp).stream()
                 .map(rawMutation -> {
                     try (ByteArrayOutputStream bios = new ByteArrayOutputStream();
                          WrappedDataOutputStreamPlus dos = new WrappedDataOutputStreamPlus(bios)) {
-                        Mutation.serializer.serialize(rawMutation, dos, MessagingService.current_version);
+                        Mutation.MutationSerializer serializer = Mutation.rawSerializers.get(EncodingVersion.last());
+                        serializer.serialize(rawMutation, dos);
                         dos.flush();
 
                         // Deserialize again for debug
-                        return Mutation.serializer.deserialize(new DataInputBuffer(bios.toByteArray()), MessagingService.current_version);
+                        return serializer.deserialize(new DataInputBuffer(bios.toByteArray()));
                     } catch (Throwable e) {
                         throw new RuntimeException(e);
                     }

@@ -1,6 +1,5 @@
 package com.datastax.oss.cdc.cassandra;
 
-import javax.validation.constraints.NotNull;
 import java.util.Map;
 
 /**
@@ -13,6 +12,5 @@ public interface Row {
      *
      * @return
      */
-    @NotNull
     Map<String, Object> getColumns();
 }

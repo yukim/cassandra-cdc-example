@@ -1,6 +1,5 @@
 package com.datastax.oss.cdc.cassandra;
 
-import javax.validation.constraints.NotNull;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -21,7 +20,6 @@ public interface ChangeEvent extends Comparable<ChangeEvent> {
      *
      * @return timestamp of this event
      */
-    @NotNull
     Instant getEventTimestamp();
 
     /**
@@ -29,7 +27,6 @@ public interface ChangeEvent extends Comparable<ChangeEvent> {
      *
      * @return Name of keyspace
      */
-    @NotNull
     String getKeyspaceName();
 
     /**
@@ -37,7 +34,6 @@ public interface ChangeEvent extends Comparable<ChangeEvent> {
      *
      * @return Name of the table this change is made
      */
-    @NotNull
     String getTableName();
 
     /**
@@ -45,7 +41,6 @@ public interface ChangeEvent extends Comparable<ChangeEvent> {
      *
      * @return Table ID
      */
-    @NotNull
     UUID getTableId();
 
     /**
@@ -53,7 +48,6 @@ public interface ChangeEvent extends Comparable<ChangeEvent> {
      *
      * @return Change event type: UPDATE or DELETE
      */
-    @NotNull
     ChangeEventType getEventType();
 
     /**
