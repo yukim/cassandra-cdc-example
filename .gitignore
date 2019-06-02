@@ -16,3 +16,6 @@ buildNumber.properties
 
 # test_dir gets created when running unit tests
 test_dir/
+
+# DSE directory for testing
+dse-*/

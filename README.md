@@ -1,5 +1,7 @@
 # Apache Cassandra Change-Data-Capture example project
 
+_For DataStax Enterprise, see [dse](https://github.com/yukim/cassandra-cdc-example/tree/dse) branch_
+
 This repository contains the sample project for reading Apache Cassandra commit log file in CDC location and outputs in JSON format.
 
 ## Build
