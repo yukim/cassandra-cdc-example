@@ -15,7 +15,7 @@
         <maven.surefire.version>2.22.1</maven.surefire.version>
         <maven.assembly.plugin.version>3.1.1</maven.assembly.plugin.version>
         <maven.shade.version>3.2.1</maven.shade.version>
-        <cassandra.version>3.11.4</cassandra.version>
+        <cassandra.version>3.11.8</cassandra.version>
         <jackson.version>2.9.8</jackson.version>
         <junit5.version>5.4.1</junit5.version>
     </properties>
